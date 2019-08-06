@@ -1,0 +1,158 @@
+<div id="list">
+
+</div>
+<p id="p"></p>
+<script>
+    {
+        //var filter = ['all'];//'hash', 'property'];
+        var hrefFirstNode = 'json?dataset=exchange_coin' + '${hash}';// + '/json?hash=' + '${hash}';
+        var firsttime = '';
+        var offset = 1;
+        //var nodeCount = 20;
+        //var nodePlusCount = 5;
+
+        $(document).ready(function () {
+            loadJsonToTable('#list', hrefFirstNode); //showMe id, first node href
+        });
+
+
+        function skipFilter(obj_item) {
+            if (filter[0] == 'all') return false;
+
+            var skip = true;
+            for (f in filter) {
+                if (obj_item == filter[f]) {
+                    skip = false;
+                }
+            }
+            return skip;
+        }//if true, skip please
+
+        {
+            var liststring = '';
+            var title = 'JSON';
+
+            function ObjectToTableString(obj) {
+                liststring += '<table class="table table-hover table-bordered dataTable"><thead>';
+
+                liststring += '<caption>' + '</caption>'; //title
+                liststring += '<tr>'
+                for (x in obj) {
+                    if (skipFilter(x)) continue
+                    liststring += '<th rowspan="1" colspan="1">' + x + '</th>';
+                }
+                liststring += '</tr>'
+                //string += '<tr><th>' + '' + '</th></tr>';
+                liststring += '</thead>';
+                liststring += '<tfoot>';
+                liststring += '<tr>'
+                for (x in obj) {
+                    if (skipFilter(x)) continue
+                    liststring += '<th rowspan="1" colspan="1">' + x + '</th>';
+                }
+                liststring += '</tr>'
+                liststring += '</tfoot>';
+                liststring += '<tbody id="listtable">';
+                liststring += ifObjectToStringAll(obj);
+                //IOTS(obj, nodeCount);
+                liststring += '</tbody></table>';
+                return liststring;
+            }//JSON to HTML table format
+
+            {
+                var listsstring = '';
+                function IOTS(obj, i) {
+                    if (i <= 1 || obj['parent_hash']['hash'] == '0') return;
+
+                    listsstring = '';
+                    listsstring += '<tr>';
+                    $.get('json' + obj['parent_hash']['href'], function (data, status) {
+                        ifObjectToStringAll(data);
+                        listsstring += '</tr>';
+
+                        $('#listtable').append(listsstring);
+
+                        IOTS(data, --i);
+                    })
+                }// use for additional append
+
+                function ifObjectToStringAllClean(obj) {
+                    listsstring = '';
+                    listsstring += '<tr>';
+                    ifObjectToStringAll(obj);
+                    listsstring += '</tr>';
+                    return listsstring;
+                }
+                {
+                    var href = '';
+
+                    function ifObjectToStringAll(obj) {
+
+                        if (Array.isArray(obj)) { // array
+                            for (x in obj) {
+                                ifObjectToStringAll(obj[x]); //value of array
+                            }
+                        }
+                        else if ((typeof obj === "object") && (obj !== null)) { // start of object '{'
+                            for (x in obj) {
+                                if (skipFilter(x)) continue
+
+                                if (obj[x]['href'] != null && obj[x]['hash'] != null) {
+                                    href = '<a href="' + obj[x]['href'] + '" >' + obj[x]['hash'] + '</a>'
+                                    //listsstring += '<th>' + x + '</th>'; //keys
+                                    listsstring += '<td>' + href + '</td>' //values
+                                } else if (x == 'timestamp') {
+                                    listsstring += '<td>' + (new Date(1 * obj[x])).toString() + '</td>'
+                                } else {
+                                    //listsstring += '<th>' + x + '</th>'; //keys
+                                    ifObjectToStringAll(obj[x]); //values
+                                }
+                            }
+                        } // end of object '}'
+                        else {  //value
+                            listsstring += '<td>' + obj + '</td>';
+                        }
+                        return listsstring;
+                    }//don't use it, used only in ObjectToTableString
+                }
+            }
+        }
+
+        function loadJsonToTable(id, itemUrl) {
+            $.get(itemUrl, function (data, status) {
+                $(id).append(ObjectToTableString(data));
+
+                for (var i = 0; i < nodeCount; i++) {
+                    iterator();
+                }
+            });
+        }
+
+        function iterator() {
+            $.ajax({
+                type: "GET",
+                url: 'json?dataset=exchange_coin&next=' + offset,
+                cache: true,
+                async: false,
+                success: function (data, status) {
+                    if (jQuery.isEmptyObject(data)) return;
+                    $('#listtable').append(ifObjectToStringAllClean(data));
+                    offset++;
+                }
+            });
+        }
+
+        //if low bottom, load more
+        $(window).on('scroll', function () {
+            if ($(window).scrollTop() + $(window).height() >= $(document).height() - 10) {
+                {
+                    for (var i = 0; i < nodePlusCount; i++) {
+                        iterator();
+                    }
+                }
+            }
+            //$('#p').html('' + $(window).scrollTop() + $(window).height() + $(document).height());
+        }).scroll();
+    }
+
+</script>

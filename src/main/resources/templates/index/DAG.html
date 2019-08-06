@@ -1,0 +1,730 @@
+﻿<div class="content" class="col-lg-12" style="width: 100%; height: 100%">
+    <div style="width: 100%; height: 100%">
+        <canvas id="chart-0"></canvas>
+        <div id="chartjs-tooltip">
+            <table></table>
+        </div>
+    </div>
+    <div class="toolbar">
+        <button onclick="nodeUpdate(this)">nodeUpdate</button>
+        <button onclick="addDataset(this)">Add Dataset</button>
+        <!--
+        <button onclick="removeDataset(this)">Remove Dataset</button>
+        <button onclick="addData(1)">add data</button>
+        <button onclick="addDataFront(this)">add data R</button>
+        -->
+        <button onclick="Pagemove(-300)">PagemoveRight</button>
+        <button onclick="zoom(1)">zoomOut</button>
+        <button onclick="zoom(-1)">zoomIn</button>
+    </div>
+</div>
+<script>
+
+    var canvasName = 'chart-0';
+
+    var firstHash = '${hash}';
+    var nodeCount = 10;
+
+    var zoomSpeed = 10;
+    var scrollSpeed = 0.1;
+
+    var TickMinWidth = 10;
+    var TickMinHeight = 10;
+
+    var nodeInterval = 10;
+</script>
+<style>
+
+    #chart-0 {
+        width: 100%;
+        height: 100%;
+    }
+
+    #chartjs-tooltip {
+        opacity: 1;
+        position: absolute;
+        background: rgba(0, 0, 0, .7);
+        color: white;
+        border-radius: 3px;
+        -webkit-transition: all .1s ease;
+        transition: all .1s ease;
+        pointer-events: none;
+        -webkit-transform: translate(-50%, 0);
+        transform: translate(-50%, 0);
+    }
+
+    caption {
+        color: white;
+    }
+
+    th, td {
+        border-bottom: 1px solid #ddd;
+        color: white;
+    }
+
+    html {
+        height: 100%;
+    }
+
+    body {
+        height: 100%;
+    }
+</style>
+<!--
+        overflow: hidden;-->
+<script src="Chart.min.js"></script>
+
+<script src="utils.js"></script>
+<script>
+    //global variables;
+
+        //don't touch below
+        var chart;
+        var isMouseDown;
+        //functions
+        var Pagemove; // move a page with click and move //only X axe avalable
+        var zoom; // zoom a page with mousescroll
+</script>
+
+<script>
+    //chart setting
+        var nodeData = new Array(); //it is used to node position
+        /*
+        nodeData.push({
+            x: 0,
+            y: 0,
+            v: 500,
+        });
+        */
+
+        {
+            //custom tooltip
+            Chart.defaults.global.tooltips.custom = function (tooltip) {
+                // Tooltip Element
+                var tooltipEl = document.getElementById('chartjs-tooltip');
+
+                // Hide if no tooltip
+                if (tooltip.opacity === 0) {
+                    tooltipEl.style.opacity = 0;
+                    return;
+                }
+
+                // Set caret Position
+                tooltipEl.classList.remove('above', 'below', 'no-transform');
+                if (tooltip.yAlign) {
+                    tooltipEl.classList.add(tooltip.yAlign);
+                } else {
+                    tooltipEl.classList.add('no-transform');
+                }
+
+                function getBody(bodyItem) {
+                    return bodyItem.lines;
+                }
+
+                // Set Text
+                if (tooltip.body) {
+                    var bodyLines = tooltip.body.map(getBody);
+
+
+                    bodyLines.forEach(function (body, i) {
+                        var colors = tooltip.labelColors[i];
+                        var style = 'background:' + colors.backgroundColor;
+                        style += '; border-color:' + colors.borderColor;
+                        style += '; border-width: 2px';
+
+                    });
+
+                    var tableRoot = tooltipEl.querySelector('table');
+                    ///////////////
+
+                    var str = '';
+                    bodyLines.forEach(function (body, i) {
+                        str = ObjectToTableString(JSONobjs[body]);
+                    })
+
+                    tableRoot.innerHTML = str;
+                }
+
+                var positionY = this._chart.canvas.offsetTop;
+                var positionX = this._chart.canvas.offsetLeft;
+
+                // Display, position, and set styles for font
+                tooltipEl.style.opacity = 1;
+                if (isMouseDown) tooltipEl.style.opacity = 0;
+                tooltipEl.style.left = positionX + tooltip.caretX + 'px';
+                tooltipEl.style.top = positionY + tooltip.caretY + 'px';
+                tooltipEl.style.fontFamily = tooltip._bodyFontFamily;
+                tooltipEl.style.fontSize = tooltip.bodyFontSize;
+                tooltipEl.style.fontStyle = tooltip._bodyFontStyle;
+                tooltipEl.style.padding = tooltip.yPadding + 'px ' + tooltip.xPadding + 'px';
+            };
+
+            ////////////////////////////////////////////////
+            var filter = ['all'];//'blockhash', 'blockprevhash'];
+
+            function skipFilter(obj_item) {
+                if (filter[0] == 'all') return false;
+
+                var skip = true;
+                for (f in filter) {
+                    if (obj_item == filter[f]) {
+                        skip = false;
+                    }
+                }
+                return skip;
+            }//if true, skip please
+
+            {
+                var string = '';
+                var title = 'JSON';
+
+                function ObjectToTableString(obj) {
+                    string = '<table><thead>';
+
+                    string += '<caption>' + title + '</caption>'; //title
+                    //string += '<tr><th>' + '' + '</th></tr>';
+                    string += '</thead>';
+                    string += '<tfoot>';
+                    string += '</tfoot>';
+                    string += '<tbody>';
+                    ifObjectToStringAll(obj);
+                    string += '</tbody></table>';
+                    return string;
+                }//JSON to HTML table format
+
+
+                var href = ''
+                function ifObjectToStringAll(obj) {
+
+                    if (Array.isArray(obj)) { // array
+                        for (x in obj) {
+                            ifObjectToStringAll(obj[x]); //value of array
+                        }
+                    }
+                    else if ((typeof obj === "object") && (obj !== null)) { // start of object '{'
+                        for (x in obj) {
+                            if (skipFilter(x)) continue
+
+                            if (obj[x]['href'] != null && obj[x]['hash'] != null) {
+                                href = '<a href="' + obj[x]['href'] + '">' + obj[x]['hash'] + '</a>'
+                                string += '<tr>';
+                                string += '<th>' + x + '</th>'; //keys
+                                string += '<td>' + href + '</td>' //values
+                                string += '</tr>';
+                            } else {
+                                string += '<tr>';
+                                string += '<th>' + x + '</th>'; //keys
+                                ifObjectToStringAll(obj[x]); //values
+                                string += '</tr>';
+                            }
+                        }
+                    } // end of object '}'
+                    else {  //value
+                        string += '<td>' + obj + '</td>';
+                    }
+                }//don't use it, used only in ObjectToTableString
+
+            }//object to table
+
+        }//tooltip setting
+
+
+
+		var utils = Samples.utils;
+
+		function colorize(opaque, context) {
+		    var value = context.dataset.data[context.dataIndex];
+			var x = value.x / 100;
+			var y = value.y / 100;
+			var r = x < 0 && y < 0 ? 250 : x < 0 ? 150 : y < 0 ? 50 : 0;
+			var g = x < 0 && y < 0 ? 0 : x < 0 ? 50 : y < 0 ? 150 : 250;
+			var b = x < 0 && y < 0 ? 0 : x > 0 && y > 0 ? 250 : 150;
+			var a = opaque ? 1 : 0.5 * value.v / 1000;
+
+			return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+		}
+
+		{ //chart init
+		    var data = {
+		        datasets: [{
+		            data: nodeData
+		        }],
+
+
+		    };
+
+		    var options = {
+
+		        animation: {
+		            duration: 1000,
+		            render: function (animation) {
+
+		            }
+		        },
+
+		        maintainAspectRatio: false,
+		        //events: ['click'],
+		        scales: {
+		            xAxes: [{
+		                gridLines: {
+		                    display: false,
+		                    drawBorder: false,
+		                    drawOnChartArea: false,
+		                    drawTicks: false
+
+		                },
+		                ticks: {
+		                    max: 100,
+		                    min: -100,
+		                    maxTicksLimit: 10, //0
+		                    display: false
+		                },
+		            }],
+		            yAxes: [{
+		                gridLines: {
+		                    display: false,
+		                    drawBorder: false,
+		                    drawOnChartArea: false,
+		                    drawTicks: false
+
+		                },
+		                ticks: {
+		                    max: 5,
+		                    min: -5,
+		                    maxTicksLimit: 0, //0
+		                    display: false
+		                },
+		            }],
+		        },
+		        onHover: function (evt) {
+		            var firstPoint = chart.getElementAtEvent(evt)[0];
+		        },
+
+
+		        onClick: function (evt) { // get index, and make data position as circle
+		            var firstPoint = chart.getElementAtEvent(evt)[0];
+		            /****************************************************************************
+                     *   chart.getElementAtEvent(evt)[0]
+                     *   ._datasetIndex
+                     *
+                     *   chart.getElementAtEvent(evt)[0]
+                     *   ._index
+                     *
+                     *   var value = chart.data.datasets[._datasetIndex].data[._index];
+                     ***************************************************************************/
+		            if (firstPoint) {
+		                datasetindex = firstPoint._datasetIndex;
+		                index = firstPoint._index;
+
+		                window.open( JSONobjs[index]['blockhash']['href']);
+		            }
+		        },
+
+
+		        //aspectRatio: window.innerWidth/ window.innerHeight,//dividivi.style.width / dividivi.style.height,
+		        legend: { display: false },
+		        tooltips: { //return index value
+		            enabled: false, //false to only show custom tooltip
+		            callbacks: {
+		                label: function (tooltipItem, data) {
+		                    return '' + tooltipItem.index;
+		                },
+		            }
+
+		        }, //tooltips
+
+		        elements: {
+		            point: { //point style
+		                backgroundColor: colorize.bind(null, false),
+
+		                borderColor: colorize.bind(null, true),
+
+		                borderWidth: function (context) {
+		                    return Math.min(Math.max(1, context.datasetIndex + 1), 8);
+		                },
+
+		                hoverBackgroundColor: 'transparent',
+
+		                hoverBorderColor: function (context) {
+		                    return utils.color(context.datasetIndex);
+		                },
+
+		                hoverBorderWidth: function (context) {
+		                    var value = context.dataset.data[context.dataIndex];
+		                    return Math.round(8 * value.v / 1000);
+		                },
+
+		                radius: function (context) {
+		                    var value = context.dataset.data[context.dataIndex];
+		                    var size = context.chart.width;
+		                    var base = Math.abs(value.v) / 1000;
+		                    return (size / 24) * base;
+		                },
+
+		                //pointStyle: 'star', //if imagefile, draw image
+
+		            },//point
+
+		        }//elements
+		    }; //options
+		    /////////////////////
+		    Chart.defaults.myChart = Chart.defaults.bubble;
+
+		    // I think the recommend using Chart.controllers.bubble.extend({ extensions here });
+		    var custom = Chart.controllers.bubble.extend({
+		        draw: function (ease) { // use this as custom points, you could draw each one as unique image
+		            if (nodeData === undefined || nodeData.length == 0) return;
+		            // Call super method first
+		            Chart.controllers.bubble.prototype.draw.call(this, ease);
+
+		            // Now we can do some custom drawing for this dataset. Here we'll draw a red box around the first point in each dataset
+		            var meta = this.getMeta();
+		            var pt0 = meta.data[0];
+		            var radius = pt0._view.radius;
+
+		            var ctx = this.chart.chart.ctx;
+
+		            {
+		                ctx.save();
+		                ctx.strokeStyle = 'red';
+		                ctx.lineWidth = 1;
+		                ctx.strokeRect(pt0._view.x - radius, pt0._view.y - radius, 2 * radius, 2 * radius);
+		                ctx.restore();
+		            }//draw red rectangle frame to first node
+
+		            {
+		            //return; // not draw
+		                var previewx = 0.0;
+		                var previewy = 0.0;
+		                for (metadata in meta.data) { //metadata is index
+
+		                    if (metadata != 0)
+		                    {
+		                        //if(JSONobjs[metadata]['blockprevhash'] != null){
+		                            var previewIndex = JSONobjs.map(function(item){return item['blockhash']['hash'];}).indexOf(JSONobjs[metadata]['blockprevhash']['hash']);
+		                            if(previewIndex == -1) return;
+		                            previewx = meta.data[previewIndex]._view.x;
+		                            previewy = meta.data[previewIndex]._view.y;
+		                        //}
+		                        var abx = meta.data[metadata]._view.x - previewx;
+		                        var aby = meta.data[metadata]._view.y - previewy;
+
+		                        ctx.save();
+		                        ctx.strokeStyle = 'red';
+		                        ctx.lineWidth = 1;
+		                        //ctx.strokeRect(previewx, previewy, abx, aby);
+		                        ctx.moveTo(previewx, previewy);
+		                        ctx.lineTo(meta.data[metadata]._view.x, meta.data[metadata]._view.y);
+		                        ctx.stroke();
+		                        ctx.restore();
+		                    }
+
+		                    //previewx = meta.data[metadata]._view.x;
+		                    //previewy = meta.data[metadata]._view.y;
+		                }
+		            }//draw arrow
+		        }
+		    });
+
+		    // Stores the controller so that the chart initialization routine can look it up with
+		    // Chart.controllers[type]
+		    Chart.controllers.myChart = custom;
+
+		    // Now we can create and use our new chart type
+		    chart = new Chart(canvasName, {
+		        type: 'myChart',
+		        data: data,
+		        options: options
+		    });
+		}//init chart
+/////////////////////
+        // eslint-disable-next-line no-unused-vars
+		{//data add functions
+		    function nodeUpdate() {
+		        chart.data.datasets.forEach(function (dataset) {
+		            dataset.data = nodeData;
+		        });
+		        chart.update();
+		    }
+
+		    // eslint-disable-next-line no-unused-vars
+		    function addDataset() {
+		        chart.data.datasets.push({
+		            data: nodeData
+		        });
+		        chart.update();
+		    }
+
+		    // eslint-disable-next-line no-unused-vars
+		    function removeDataset() {
+		        chart.data.datasets.shift();
+		        chart.update();
+		    }
+
+		    function addData(xPos) {
+		        chart.data.datasets[0].data.push({
+		            x: xPos,
+		            y: Math.sin((xPos / nodeInterval) * Math.PI / 3) * 2,
+
+		            v: 500
+		        });
+		        {
+		            chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1].v = 0;
+		            chart.options.animation.duration = 0;
+		            chart.update();
+		        }
+		        {
+		            chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1].v = 500;
+		            chart.options.animation.duration = 1000;
+		            chart.update();
+		        }
+		    }
+
+		    function addDataFront(xPos) {
+		        chart.data.datasets[0].data.unshift({
+		            x: xPos,
+		            y: Math.sin((xPos / nodeInterval) * Math.PI / 3) * 2,
+		            v: 500
+		        });
+		        {
+		            chart.data.datasets[0].data[0].v = 0;
+		            chart.options.animation.duration = 0;
+		            chart.update();
+		        }
+		        {
+		            chart.data.datasets[0].data[0].v = 500;
+		            chart.options.animation.duration = 1000;
+		            chart.update();
+		        }
+		    }
+
+		}//data add functions
+		{ // chart move functions
+		    { //init functions
+		        Pagemove = function (direction) {
+		            chart.options.scales.xAxes[0].ticks.max -= direction * scrollSpeed;
+		            chart.options.scales.xAxes[0].ticks.min -= direction * scrollSpeed;
+		            chart.update();
+		        }
+
+		        zoom = function (direction) {
+		            chart.options.scales.xAxes[0].ticks.max += zoomSpeed * direction;
+		            chart.options.scales.xAxes[0].ticks.min -= zoomSpeed * direction;
+		            //chart.options.scales.yAxes[0].ticks.max += zoomSpeed * direction;
+		            //chart.options.scales.yAxes[0].ticks.min -= zoomSpeed * direction;
+
+		            var mean;
+		            if (chart.options.scales.xAxes[0].ticks.max - chart.options.scales.xAxes[0].ticks.min < TickMinWidth) {
+		                mean = chart.options.scales.xAxes[0].ticks.max + chart.options.scales.xAxes[0].ticks.min;
+		                chart.options.scales.xAxes[0].ticks.max = (mean + TickMinWidth) / 2;
+		                chart.options.scales.xAxes[0].ticks.min = (mean - TickMinWidth) / 2;
+		            }
+		            /*
+		            if (chart.options.scales.yAxes[0].ticks.max - chart.options.scales.yAxes[0].ticks.min < TickMinHeight) {
+		                mean = chart.options.scales.yAxes[0].ticks.max + chart.options.scales.yAxes[0].ticks.min;
+		                chart.options.scales.yAxes[0].ticks.max = (mean + TickMinHeight) / 2;
+		                chart.options.scales.yAxes[0].ticks.min = (mean - TickMinHeight) / 2;
+		            }
+		            */
+		            chart.update();
+		        }
+		    } //init functions
+		    {//device move
+		        {//mouse events // onmousedown="mouseDown(event)" onmousemove="mouseMove(event)" onmouseup="mouseUp(event)"
+		            document.getElementById(canvasName).addEventListener("wheel", wheelZoom);
+
+		            document.getElementById(canvasName).addEventListener("mousedown", mouseDown);
+		            document.getElementById(canvasName).addEventListener("mousemove", mouseMove);
+		            document.getElementById(canvasName).addEventListener("mouseup", mouseUp);
+
+		            //mouse chart move
+		            function wheelZoom(event) {
+		                if (event.ctrlKey)
+		                    event.preventDefault(this);
+		                zoom(event.deltaY / Math.abs(event.deltaY));
+		            }
+
+		            isMouseDown = false;
+		            var mousePreX;
+		            function mouseDown(event) {
+		                isMouseDown = true;
+		                mousePreX = event.pageX;
+		            }
+
+		            function mouseMove(event) {
+		                if (isMouseDown) {
+		                    Pagemove(event.pageX - mousePreX);
+
+		                    mousePreX = event.pageX;
+		                }
+		            }
+		            function mouseUp(event) {
+		                updateObjs();
+		                isMouseDown = false;
+		            }
+
+		        }//mouse move
+		        {//touch move
+		            document.getElementById(canvasName).addEventListener("touchstart", touchStart);
+		            //document.getElementById(canvasName).addEventListener("touchend", touchEnd);
+		            document.getElementById(canvasName).addEventListener("touchmove", touchMove);
+
+		            var touchPreX0;
+
+		            var touchCurrentXabs;
+		            var touchCurrentYabs;
+
+		            var touchPrePow;
+		            var touchCurrentPow;
+
+		            var touchPowDelta;
+
+		            function touchStart(event) {
+		                touchPreX0 = event.touches[0].clientX;
+		                if (event.touches.length >= 2) {
+		                    touchCurrentXabs = event.touches[0].clientX - event.touches[1].clientX;
+		                    touchCurrentYabs = event.touches[0].clientY - event.touches[1].clientY;
+
+		                    touchPrePow = touchCurrentXabs * touchCurrentXabs + touchCurrentYabs * touchCurrentYabs;
+		                }
+		            }
+
+		            function touchEnd(event) {
+		            }
+
+
+		            function touchMove(event) {
+		                if (event.touches.length == 1) { //only move
+		                    Pagemove(event.touches[0].clientX - touchPreX0);
+		                    touchPreX0 = event.touches[0].clientX;
+		                }
+		                else if (event.touches.length >= 2) { //only zoom
+		                    touchCurrentXabs = event.touches[0].clientX - event.touches[1].clientX;
+		                    touchCurrentYabs = event.touches[0].clientY - event.touches[1].clientY;
+
+		                    touchCurrentPow = touchCurrentXabs * touchCurrentXabs + touchCurrentYabs * touchCurrentYabs;
+		                    touchPowDelta = touchCurrentPow - touchPrePow;
+
+		                    zoom(touchPowDelta);
+		                    touchPrePow = touchCurrentPow;
+		                    ///////////
+		                } else return;
+		            }
+		        }//touch move
+		    }//device move
+		}//move functions
+        //////////////////////
+
+        var onWorkingR = false;
+        var onWorking = false;
+        function updateObjs(){
+            if(!onWorking && !onWorkingR && JSONobjs.length != 0 ){
+                onWorking = true;
+                onWorkingR = true;
+                IOTS(JSONobjs[0]['blockprevhash']['hash'], 2);
+                deleteIOTS();
+
+                IOTSR(JSONobjs[JSONobjs.length - 1]['blockhash']['hash'], 2);
+                deleteIOTSR();
+            }
+        }
+</script>
+<script>
+    //load json
+
+        var JSONobjs = new Array();
+
+        /////////////
+        var dataXPosR = 0;
+        function IOTSR(hash, i) {
+            $.get( 'json?dataset=block_prevhash&find_child=1&hash=' + hash, function (data, status) {
+                if(chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1].x > chart.options.scales.xAxes[0].ticks.max + nodeInterval * 2
+                    || jQuery.isEmptyObject(data)) {
+                    onWorkingR = false;
+                    return;
+                    }
+                JSONobjs.push(data);
+                addData(dataXPosR+=nodeInterval);
+
+                if (i <= 1) return;
+
+                //IOTSR(data['blockhash']['hash'], --i);
+
+                IOTSR(data['blockhash']['hash'], 2);
+
+            })
+        }
+
+        var dataXPos = 0;
+        function IOTS(hash, i) { //parent could be multiple
+            $.get( 'json?dataset=block_prevhash&hash=' + hash, function (data, status) {
+                if(chart.data.datasets[0].data[0].x < chart.options.scales.xAxes[0].ticks.min - nodeInterval * 2
+                    || jQuery.isEmptyObject(data)) {
+                    onWorking = false;
+                    return;
+                    }
+                JSONobjs.unshift(data);
+                addDataFront(dataXPos-=nodeInterval);
+
+                if (i <= 1 || data['blockprevhash']['hash'] == '0') return;
+
+                //IOTS(data['blockprevhash']['hash'], --i);
+
+                IOTS(JSONobjs[0]['blockprevhash']['hash'], 2);
+
+            })
+        }
+
+        function deleteIOTSR(){
+            if (chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1].x <= chart.options.scales.xAxes[0].ticks.max + nodeInterval * 4
+                || JSONobjs.length <= 2 )
+                return;
+            dataXPosR-=nodeInterval;
+            chart.data.datasets[0].data.pop();
+            JSONobjs.pop();
+
+            deleteIOTSR();
+        }
+
+        function deleteIOTS(){
+            if (chart.data.datasets[0].data[0].x >= chart.options.scales.xAxes[0].ticks.min - nodeInterval * 4
+                || JSONobjs.length <= 2 )
+                return;
+
+            dataXPos+=nodeInterval;
+            chart.data.datasets[0].data.shift();
+            JSONobjs.shift();
+
+            deleteIOTS();
+        }
+
+        function IOTSF(hash, i) { //parent could be multiple
+            //////////////
+            $.ajax({
+                type: "GET",
+                url: 'json?dataset=blockdata' ,
+                cache: true,
+                async: false,
+                success: function (data, status) {
+                    if(hash == '')
+                        hash = 'hash=' + data['hash']['hash'];
+                }
+            });
+            //////////////
+            $.get( 'json?dataset=block_prevhash&' + hash, function (data, status) {
+                if(jQuery.isEmptyObject(data)) return;
+
+                JSONobjs.push(data);
+                addDataFront(0);
+
+                if (i <= 1 || data['blockprevhash']['hash'] == '0') return;
+
+                //IOTS(data['blockprevhash']['hash'], --i); //get parent
+                //IOTSR(data['blockhash']['hash'], --i); //get child
+                updateObjs();
+            })
+        }
+
+        IOTSF(firstHash, nodeCount); //get first node
+        ///////////////////
+</script>

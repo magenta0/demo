@@ -1,0 +1,188 @@
+<div class="content" class="col-lg-12" style="width: 100%; height: 100%">
+    <div style="width: 100%; height: 100%">
+        <canvas id="chart-transaction" style="width: 100%; height: 100%"></canvas>
+    </div>
+    <div class="toolbar">
+    </div>
+</div>
+<script>
+
+    var canvasName = 'chart-transaction';
+
+    //var dateFromString = "20 May 2019 GMT";
+    var dateToString = "24 May 2019 GMT";
+
+    var dateDuration = 14; // from = to - duration
+
+    var dateFromStamp;
+    var dateToStamp;
+
+
+    var dayAfterFirstDay = new Date("02 Jan 1970 GMT");
+    var aDayStamp = dayAfterFirstDay.getTime();
+
+    var transactionCount = 0;
+
+    var nearestIndex = 0;
+</script>
+
+<script src="Chart.min.js"></script>
+
+<script src="utils.js"></script>
+
+<script>
+    {
+        //dateToStamp = (new Date(dateToString)).getTime();
+        dateToStamp = (new Date()).getTime() - (new Date()).getTime()%aDayStamp;
+        dateFromStamp = dateToStamp - aDayStamp * dateDuration; //= (new Date(dateFromString)).getTime();
+
+        function GetDayCount(dateStamp, i) {
+            $.get('json?dataset=transactiondata&timestamp=' + dateStamp + '&timestamp2=' + (dateStamp + aDayStamp), function (data, status) {
+                var d = new Date(dateStamp);
+
+                changeData(data['count'], d.getUTCDate() + " " + MONTHS[d.getUTCMonth()], i);
+            })
+        }
+
+        function GetDayCountBetween(SourceStamp, DestStamp) {
+            var i = 0;
+            for (var s = SourceStamp; s < DestStamp; s += aDayStamp) {
+                addData(0, "");
+                GetDayCount(s, i);
+                i++;
+            }
+        }
+
+        var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        var config = {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'transaction count',
+                    backgroundColor: window.chartColors.red,
+                    borderColor: window.chartColors.red,
+                    data: [
+                    ],
+                    fill: false,
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                title: {
+                    display: false,
+                    text: 'Line Chart'
+                },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function (tooltipItem, data) {
+                            nearestIndex = tooltipItem.index;
+
+                            return 'transaction count: ' + config.data.datasets[0].data[nearestIndex];
+                        },
+                    },
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                },
+                onClick: function (evt) { // get index, and make data position as circle
+                    window.open('?list=Transaction_list&timestamp=' + (dateToStamp - (dateDuration - 1 - nearestIndex) * aDayStamp));
+                },
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Day',
+                            fontSize: 20,
+                            fontFamily: 'Roboto'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'transactions count per a day',
+                            fontSize: 20,
+                            fontFamily: 'Roboto'
+                        }
+                    }]
+                },
+                legend: { display: false },
+            }
+        };
+
+
+        var ctx = document.getElementById(canvasName).getContext('2d');
+        window.myLine = new Chart(ctx, config);
+
+        var colorNames = Object.keys(window.chartColors);
+
+
+
+        function addData(data, dayString) {
+            if (config.data.datasets.length > 0) {
+                config.data.labels.push(dayString);
+
+                config.data.datasets.forEach(function (dataset) {
+                    dataset.data.push((data));
+                });
+
+                window.myLine.update();
+            }
+        }
+
+        function changeData(data, dayString, i) {
+            if (config.data.datasets.length > 0) {
+                config.data.labels[i] = dayString;
+                config.data.datasets[0].data[i] = data;
+
+                window.myLine.update();
+            }
+        }
+        /*
+		document.getElementById('addDataset').addEventListener('click', function() {
+			var colorName = colorNames[config.data.datasets.length % colorNames.length];
+			var newColor = window.chartColors[colorName];
+			var newDataset = {
+				label: 'Dataset ' + config.data.datasets.length,
+				backgroundColor: newColor,
+				borderColor: newColor,
+				data: [],
+				fill: false
+			};
+
+			for (var index = 0; index < config.data.labels.length; ++index) {
+				newDataset.data.push(randomScalingFactor());
+			}
+
+			config.data.datasets.push(newDataset);
+			window.myLine.update();
+		});
+        */
+        /*
+		document.getElementById('removeDataset').addEventListener('click', function() {
+			config.data.datasets.splice(0, 1);
+			window.myLine.update();
+		});
+
+		document.getElementById('removeData').addEventListener('click', function() {
+			config.data.labels.splice(-1, 1); // remove the label first
+
+			config.data.datasets.forEach(function(dataset) {
+				dataset.data.pop();
+			});
+
+			window.myLine.update();
+		});
+		*/
+
+
+
+        GetDayCountBetween(dateFromStamp, dateToStamp);
+    }
+</script>

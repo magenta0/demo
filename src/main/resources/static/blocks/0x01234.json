@@ -1,0 +1,17 @@
+{
+  "property": "block",
+  "hash": {
+    "hash": "0x01234",
+    "href": "?list=item&hash=0x01234"
+  },
+  "timestamp": 10,
+  "foo": "bar",
+  "parent_hash": {
+    "hash": "0",
+    "href": ""
+  },
+  "minedby_hash": {
+    "hash": "0x05678",
+    "href": "?list=item&hash=0x05678"
+  }
+}

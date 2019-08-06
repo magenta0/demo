@@ -1,0 +1,158 @@
+<div id="transaction">
+
+</div>
+<p id="p"></p>
+<script>
+    {
+        var Tfilter = ['all'];//'hash', 'property'];
+        var ThrefFirstNode = 'json?dataset=utxo&' + '${hash}';// + '/json?hash=' + '${hash}';
+        var Tfirsttime = 0;
+        var Toffset = 1;
+        var TnodeCount = 30;
+        var TnodePlusCount = 0;
+
+        $(document).ready(function () {
+            TloadJsonToTable('#transaction', ThrefFirstNode); //showMe id, first node href
+        });
+
+
+        function TskipFilter(obj_item) {
+            if (Tfilter[0] == 'all') return false;
+
+            var skip = true;
+            for (f in Tfilter) {
+                if (obj_item == Tfilter[f]) {
+                    skip = false;
+                }
+            }
+            return skip;
+        }//if true, skip please
+
+        {
+            var trncstring = '';
+            var title = 'JSON';
+
+            function TObjectToTableString(obj) {
+                trncstring += '<table class="table table-hover table-bordered dataTable"><thead>';
+
+                trncstring += '<caption>' + '</caption>'; //title
+                trncstring += '<tr>'
+                for (x in obj) {
+                    if (TskipFilter(x)) continue
+                    trncstring += '<th rowspan="1" colspan="1">' + x + '</th>';
+                }
+                trncstring += '</tr>'
+                //string += '<tr><th>' + '' + '</th></tr>';
+                trncstring += '</thead>';
+                trncstring += '<tfoot>';
+                trncstring += '<tr>'
+                for (x in obj) {
+                    if (TskipFilter(x)) continue
+                    trncstring += '<th rowspan="1" colspan="1">' + x + '</th>';
+                }
+                trncstring += '</tr>'
+                trncstring += '</tfoot>';
+                trncstring += '<tbody id="trnctable">';
+                trncstring += TifObjectToStringAll(obj);
+                //TIOTS(obj, TnodeCount);
+                trncstring += '</tbody></table>';
+                return trncstring;
+            }//JSON to HTML table format
+
+            {
+                var trncsstring = '';
+                function TIOTS(obj, i) {
+                    if (i <= 1 || obj['parent_hash']['hash'] == '0') return;
+
+                    trncsstring = '';
+                    trncsstring += '<tr>';
+                    $.get('json' + obj['parent_hash']['href'], function (data, status) {
+                        TifObjectToStringAll(data);
+                        trncsstring += '</tr>';
+
+                        $('#trnctable').append(sstring);
+
+                        TIOTS(data, --i);
+                    })
+                }// use for additional append
+
+                function TifObjectToStringAllClean(obj) {
+                    trncsstring = '';
+                    trncsstring += '<tr>';
+                    TifObjectToStringAll(obj);
+                    trncsstring += '</tr>';
+                    return trncsstring;
+                }
+                {
+                    var href = '';
+
+                    function TifObjectToStringAll(obj) {
+
+                        if (Array.isArray(obj)) { // array
+                            for (x in obj) {
+                                TifObjectToStringAll(obj[x]); //value of array
+                            }
+                        }
+                        else if ((typeof obj === "object") && (obj !== null)) { // start of object '{'
+                            for (x in obj) {
+                                if (TskipFilter(x)) continue
+
+                                if (obj[x]['href'] != null && obj[x]['hash'] != null) {
+                                    href = '<a href="' + obj[x]['href'] + '" >' + obj[x]['hash'] + '</a>'
+                                    //sstring += '<th>' + x + '</th>'; //keys
+                                    trncsstring += '<td>' + href + '</td>' //values
+                                } else if (x == 'timestamp') {
+                                    trncsstring += '<td>' + (new Date(1 * obj[x])).toString() + '</td>'
+                                } else {
+                                    //sstring += '<th>' + x + '</th>'; //keys
+                                    TifObjectToStringAll(obj[x]); //values
+                                }
+                            }
+                        } // end of object '}'
+                        else {  //value
+                            trncsstring += '<td>' + obj + '</td>';
+                        }
+                        return trncsstring;
+                    }//don't use it, used only in ObjectToTableString
+                }
+            }
+        }
+
+        function TloadJsonToTable(id, itemUrl) {
+            $.get(itemUrl, function (data, status) {
+                $(id).append(TObjectToTableString(data));
+                Tfirsttime = data['timestamp'];
+
+                for (var i = 0; i < TnodeCount; i++) {
+                    Titerator();
+                }
+            })
+        }
+
+        function Titerator() {
+            $.ajax({
+                type: "GET",
+                url: 'json?dataset=utxo&${hash}&next=' + Toffset + '',
+                cache: true,
+                async: false,
+                success: function (data, status) {
+                    if (jQuery.isEmptyObject(data)) return;
+                    $('#trnctable').append(TifObjectToStringAllClean(data));
+                    Toffset++;
+                }
+            });
+        }
+
+        //if low bottom, load more
+        $(window).on('scroll', function () {
+            if ($(window).scrollTop() + $(window).height() >= $(document).height() - 10) {
+                {
+                    for (var i = 0; i < TnodePlusCount; i++) {
+                        Titerator();
+                    }
+                }
+            }
+            //$('#p').html('' + $(window).scrollTop() + $(window).height() + $(document).height());
+        }).scroll();
+    }
+</script>

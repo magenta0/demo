@@ -1,0 +1,87 @@
+<div id="item">
+</div>
+
+<script>
+    var filter = ['all'];//, 'hash', 'parent_hash'];
+    var hrefFirstNode = 'json?' + '${hash}' //'/json?hash=' + '${hash}';
+
+    $(document).ready(function () {
+        loadJsonToTable('#item', hrefFirstNode); //showMe id, first node href
+    });
+
+    function skipFilter(obj_item) {
+        if(filter[0] == 'all') return false;
+
+        var skip = true;
+        for (f in filter) {
+            if (obj_item == filter[f]) {
+                skip = false;
+            }
+        }
+        return skip;
+    }//if true, skip please
+
+    {
+        var string = '';
+        var title = 'JSON';
+
+        function ObjectToTableString(obj) {
+            string = '<table class="table table-hover table-bordered dataTable"><thead>';
+
+            string += '<caption>' + '</caption>'; //title
+            //string += '<tr><th>' + '' + '</th></tr>';
+            string += '</thead>';
+            string += '<tfoot>';
+            string += '</tfoot>';
+            string += '<tbody>';
+            ifObjectToStringAll(obj);
+            string += '</tbody></table>';
+            return string;
+        }//JSON to HTML table format
+
+        {
+            var href = ''
+            function ifObjectToStringAll(obj) {
+
+                if (Array.isArray(obj)) { // array
+                    for (x in obj) {
+                        ifObjectToStringAll(obj[x]); //value of array
+                    }
+                }
+                else if ((typeof obj === "object") && (obj !== null)) { // start of object '{'
+                    for (x in obj) {
+                        if (skipFilter(x)) continue
+
+                        if (obj[x]['href'] != null && obj[x]['hash'] != null) {
+                            href = '<a href="' + obj[x]['href'] + '">' + obj[x]['hash'] + '</a>'
+                            string += '<tr>';
+                            string += '<th>' + x + '</th>'; //keys
+                            string += '<td>' + href + '</td>' //values
+                            string += '</tr>';
+                        } else if (x == 'timestamp') {
+                                string += '<tr>';
+                                string += '<th>' + x + '</th>'; //keys
+                                string += '<td>' + (new Date(1*obj[x])).toString() + '</td>'
+                                string += '</tr>';
+                        } else
+                        {
+                            string += '<tr>';
+                            string += '<th>' + x + '</th>'; //keys
+                            ifObjectToStringAll(obj[x]); //values
+                            string += '</tr>';
+                        }
+                    }
+                } // end of object '}'
+                else {  //value
+                    string += '<td>' + obj + '</td>';
+                }
+            }//don't use it, used only in ObjectToTableString
+        }
+    }
+
+    function loadJsonToTable(id, itemUrl) {
+        $.get(itemUrl, function (data, status) {
+            $(id).append(ObjectToTableString(data));
+        })
+    }
+</script>

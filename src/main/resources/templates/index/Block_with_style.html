@@ -1,0 +1,148 @@
+<div id="wow">
+<div id="div0" style="height: 64px; border-bottom: 1px solid #eee;">
+        <canvas id="myCanvas0" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+        <table style="font-size: 12px; height: 36px;">
+            <tr>
+                <th>hash</th>
+                <td id="hash0"></td>
+            </tr>
+            <tr>
+                <th style="width: 85px;">time Stamp</th>
+                <td id="time0"></td>
+            </tr>
+        </table>
+</div>
+<div id="div1" style="height: 64px; border-bottom: 1px solid #eee;">
+    <canvas id="myCanvas1" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <table style="font-size: 12px; height: 36px">
+        <tr>
+            <th>hash</th>
+            <td id="hash1"></td>
+        </tr>
+        <tr>
+            <th style="width: 85px;">time Stamp</th>
+            <td id="time1"></td>
+        </tr>
+    </table>
+
+</div>
+<div id="div2" style="height: 64px; border-bottom: 1px solid #eee;">
+    <canvas id="myCanvas2" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <table style="font-size: 12px; height: 36px">
+        <tr>
+            <th>hash</th>
+            <td id="hash2"></td>
+        </tr>
+        <tr>
+            <th style="width: 85px;">time Stamp</th>
+            <td id="time2"></td>
+        </tr>
+    </table>
+
+</div>
+<div id="div3" style="height: 64px; border-bottom: 1px solid #eee;">
+    <canvas id="myCanvas3" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <table style="font-size: 12px; height: 36px">
+        <tr>
+            <th>hash</th>
+            <td id="hash3"></td>
+        </tr>
+        <tr>
+            <th style="width: 85px;">time Stamp</th>
+            <td id="time3"></td>
+        </tr>
+    </table>
+
+</div>
+<div id="div4" style="height: 64px; border-bottom: 1px solid #eee;">
+    <canvas id="myCanvas4" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <table style="font-size: 12px; height: 36px">
+        <tr>
+            <th>hash</th>
+            <td id="hash4"></td>
+        </tr>
+        <tr>
+            <th style="width: 85px;">time Stamp</th>
+            <td id="time4"></td>
+        </tr>
+    </table>
+
+</div>
+<div id="div5" style="height: 64px; border-bottom: 1px solid #eee;">
+    <canvas id="myCanvas5" width="64" height="40.04" style="float: left; margin-top: 12px; margin-right: 20px; margin-left: 20px;">
+        Your browser does not support the HTML5 canvas tag.
+    </canvas>
+    <table style="font-size: 12px; height: 36px">
+        <tr>
+            <th>hash</th>
+            <td id="hash5"></td>
+        </tr>
+        <tr>
+            <th style="width: 85px;">time Stamp</th>
+            <td id="time5"></td>
+        </tr>
+    </table>
+
+</div>
+</div>
+<script>
+//$("#scream").remove();
+function drawBlock (id, text) {
+    var canvassss = document.getElementById(id);
+    var ctxxxx = canvassss.getContext("2d");
+
+    var img = new Image();
+    img.src = 'assets/img/그룹 330.svg';
+    img.onload = function (e)
+    {
+        ctxxxx.drawImage(img, 0, 0);
+
+        ctxxxx.font = "12px Roboto";
+        ctxxxx.fillStyle = "#343F50";
+        ctxxxx.fillText(text, 22, 29);
+    }
+
+};
+var lasttime = '';
+var offset=0;
+var harray;
+var tarray;
+function loadBlock(){
+if (offset >= 6) {offset = 5; return;}
+$.ajax({
+    type: "GET",
+    url: 'json?next=' + offset,
+    cache: false,
+    async: false,
+    success: function (data, status) {
+        if (jQuery.isEmptyObject(data)) return;
+        drawBlock('myCanvas' + offset, data['height']);
+        $('#hash' + offset).append( '<a href="' + data['hash']['href'] + '">' +
+                                    data['hash']['hash'] + '</a>');
+        $('#time' + offset).append(data['timestamp']);
+
+        if (offset == 0)
+            lasttime = data['timestamp'];
+        offset++;
+        loadBlock();
+    }
+});
+}
+loadBlock();
+
+function pushDown(){
+    $('#wow').prepend($('#div' + offset).detach());
+    offset = (offset + 5) % 6;
+}
+
+</script>

@@ -1,0 +1,208 @@
+<script>
+</script>
+<style>
+    th {
+        padding-right: 10px;
+    }
+    .row {
+        margin: 0;
+    }
+    th {
+        white-space: nowrap;
+    }
+    td {
+        width: 100%;
+    }
+    tbody{
+        position: relative;
+    }
+    #wow{
+        position: relative;
+        overflow: hidden;
+    }
+     #Twow{
+        position: relative;
+        overflow: hidden;
+
+    }
+    .page-inner {
+        padding: 40px;
+        margin: 0px;
+    }
+    .col-sm-12 {
+        padding: 0 15px 0 0;
+    }
+    .col-sm-6 {
+        padding: 15px 15px 15px 0;
+    }
+    .col-xs-9 {
+        font-weight: 700;
+        margin-top: 50px;
+        font-size: 24px;
+        line-height: 29px;
+        color: #1D4670;
+    }
+    .col-xs-3 {
+        text-align: right;
+        margin-top: 60px;
+        font-size: 16px;
+        line-height: 19px;
+        padding: 0;
+    }
+    .tgraph {
+        height: 440px;
+        padding-top: 40px;
+        padding-bottom: 30px;
+    }
+    @media(max-width:768px) {
+        .page-inner {
+            padding: 0px;
+            margin: 0px;
+        }
+        .col-sm-12 {
+            padding: 7px 0;
+        }
+        .col-sm-6 {
+            padding: 7px 0;
+        }
+        .col-xs-9 {
+            padding-left: 0;
+        }
+        .col-xs-3 {
+            text-align: right;
+            margin-top: 60px;
+            font-size: 16px;
+            line-height: 19px;
+            padding: 0;
+        }
+        .col-xs-3 a {
+            float: right;
+        }
+        .tgraph {
+            height: 300px;
+            padding-top: 40px;
+            padding-bottom: 30px;
+        }
+        .page-inner {
+            padding: 24px;
+        }
+    }
+</style>
+
+<div class="row" style="border-color: rgb(243, 243, 243);">
+    <div class="row">
+        <div class="col-sm-12" >
+        <div class="page-inner">
+            <div class="row">
+                <div class="row">
+                    <div class="col-xs-9">
+                        Transaction History
+                    </div>
+                </div>
+                <div class="tgraph">
+                    <#include "transaction_graph.html">
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+        <!-- /.col-md-4 -->
+        <div class="col-sm-6 ">
+        <div class="page-inner">
+            <div class="row">
+                <div class="col-xs-9">
+                    Blocks
+                </div>
+                <div class="col-xs-3">
+                    <a href="?list=Block_list">+ More Info</a>
+                </div>
+            </div>
+            <hr style="border-width: 4px; rgba(112, 112, 112, 1); border-top-color: rgba(112, 112, 112, 1);"/>
+            <div style="overflow: hidden; height: 320px">
+                <#include "Block_with_style.html">
+            </div>
+        </div>
+        </div>
+        <!-- /.col-md-4 -->
+        <div class="col-sm-6">
+        <div class=" page-inner">
+            <div class="row">
+                <div class="col-xs-9">
+                    Transactions
+                </div>
+                <div class="col-xs-3">
+                    <a href="?list=Transaction_list">+ More Info</a>
+                </div>
+            </div>
+            <hr style="border-width: 4px; color: rgba(112, 112, 112, 1); border-top-color: rgba(112, 112, 112, 1);"/>
+            <div style="overflow: hidden; height: 320px">
+                <#include "transaction_with_style.html">
+            </div>
+        </div>
+        </div>
+        <!-- /.col-md-4 -->
+</div>
+<div class="row" style= "padding: 0; border: 0; margin: 0;">
+    <button type="button" id="buttonOn" onclick="setInterval(this)">realtime Update ON</button>
+    <button type="button" id="buttonOff" disabled onclick="myStopFunction(this)">realtime Update OFF</button>
+</div>
+<!-- /.row -->
+<script>
+var ajaxCheck = function (){
+    if (!isOnRunningInterval) return;
+    $.ajax({
+        type: "GET",
+        url: 'json?next=-1&timestamp=' + lasttime,
+        cache: false,
+        async: false,
+        success: function (data, status) {
+            if (jQuery.isEmptyObject(data) || data['hash']['hash'] == $('#hash' + 0).text() ) return;
+            {
+                drawBlock('myCanvas' + offset, data['height']);
+                $('#hash' + offset).html( '<a href="' + data['hash']['href'] + '">' +
+                                            data['hash']['hash'] + '</a>');
+                $('#time' + offset).html(data['timestamp']);
+                lasttime = data['timestamp'];
+                pushDown();
+            }
+        }
+    });
+    $.ajax({
+        type: "GET",
+        url: 'json?dataset=transactiondata&next=-1&timestamp=' + Tlasttime,
+        cache: false,
+        async: false,
+        success: function (data, status) {
+            if (jQuery.isEmptyObject(data) || data['hash']['hash'] == $('#Thash' + 0).text() ) return;
+            {
+                TdrawBlock('TmyCanvas' + Toffset);
+                $('#Thash' + Toffset).html( '<a href="' + data['hash']['href'] + '">' +
+                                            data['hash']['hash'] + '</a>');
+                $('#price' + Toffset).html('10');
+                $('#Ttime' + Toffset).html(data['timestamp']);
+                Tlasttime = data['timestamp'];
+                TpushDown();
+            }
+        }
+    });
+    setTimeout(ajaxCheck, 5000);
+}
+
+var isOnRunningInterval = false;
+function setInterval() {
+    if (!isOnRunningInterval){
+        isOnRunningInterval = true;
+        document.getElementById("buttonOn").disabled = true;
+        document.getElementById("buttonOff").disabled = false;
+        setTimeout(ajaxCheck, 5000);
+    }
+}
+function myStopFunction()  {
+    isOnRunningInterval = false;
+        document.getElementById("buttonOn").disabled = false;
+        document.getElementById("buttonOff").disabled = true;
+    clearTimeout(ajaxCheck);
+}
+
+</script>
